@@ -4,9 +4,14 @@ python-multipart==0.0.9
 pydantic==2.8.2
 requests==2.32.3
 
-docling==2.6.0
-paddleocr==2.7.3
-paddlepaddle==2.6.2
+# --- NUMPY: MUST be <2.0 for PaddleOCR ---
+numpy==1.26.4
 
+# --- OCR stack ---
+paddlepaddle==2.6.2
+paddleocr==2.7.3
 opencv-python-headless==4.10.0.84
+
+# --- PDF ---
+docling==2.6.0
 Pillow==10.4.0

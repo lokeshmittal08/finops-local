@@ -15,7 +15,7 @@ Lightweight, containerized stack for extracting bank statement data, persisting 
 - `.env` file (not committed) with:
 POSTGRES_DB=finops
 POSTGRES_USER=finops
-POSTGRES_PASSWORD=finops_password_change_me
+POSTGRES_PASSWORD=
 POSTGRES_PORT=5432
 N8N_PORT=5678
 STREAMLIT_PORT=8501

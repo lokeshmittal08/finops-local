@@ -1,0 +1,868 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "23e4d0f7-7f55-4e7c-acce-60715f9df30b",
+      "name": "Webhook",
+      "webhookId": "69e41375-9162-43e0-9765-2330baf94f0c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "feb3581b-f91e-46a4-90c7-32a1b14c4c1a",
+              "name": "user_message",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "2989ee36-622a-43cd-aff4-5f56bebd7b4a",
+              "name": "request_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "494f4c4c-1608-45d4-8526-0039b79c502e",
+              "name": "ts",
+              "value": "={{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "bf9d2b9a-9f30-413d-a11d-a130ecb96888",
+              "name": "user_timezone",
+              "value": "={{ $json.body.meta.timezone }}",
+              "type": "string"
+            },
+            {
+              "id": "80076ae8-ef1a-442f-90b9-003cedd20886",
+              "name": "user_id",
+              "value": "={{ $json.body.meta.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "8333a5ed-8f59-42a0-b3ef-49725a9dae8f",
+              "name": "source",
+              "value": "={{ $json.body.source }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0163f580-a213-426a-86c9-a3212d6148a3",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = ($json.user_message || \"\").toLowerCase();\n\nconst unsafeKeywords = [\n  \"hack\",\n  \"exploit\",\n  \"password\",\n  \"credential\",\n  \"malware\",\n  \"kill\",\n  \"suicide\",\n  \"bomb\",\n  \"attack\"\n];\n\nconst isUnsafe = unsafeKeywords.some(k => msg.includes(k));\n\nreturn [\n  {\n    ...$json,\n    gatekeeper: {\n      status: isUnsafe ? \"unsafe\" : \"safe\",\n      reason: isUnsafe\n        ? \"Matched blocked keyword\"\n        : \"Normal productivity request\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        416
+      ],
+      "id": "cb97525b-b2b7-4cb4-912d-8f26987027ce",
+      "name": "Gatekeeper1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.gatekeeper.status }}",
+                    "rightValue": "safe",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e3942e53-eba8-465f-a32d-3fb016a71cdb"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1abd6dc6-2248-4da8-868c-87eeffa318b2",
+                    "leftValue": "={{ $json.gatekeeper.status }}",
+                    "rightValue": "unsafe",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        416
+      ],
+      "id": "4034187f-16f8-436c-b001-7da68c46bbbb",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst text = $json.user_message.toLowerCase();\n\nconst intents = {\n  expense: /(expense|spend|spent|transaction|statement|debit|credit)/,\n  weather: /(weather|temperature|rain|forecast|climate)/,\n  forex: /(forex|exchange rate|convert|usd|aed|inr|gbp|eur)/,\n  calendar: /(calendar|meeting|availability|schedule|free)/,\n  secretary: /(note|task|remind|todo|remember)/\n};\n\nconst detected = [];\n\nfor (const [intent, regex] of Object.entries(intents)) {\n  if (regex.test(text)) {\n    detected.push(intent);\n  }\n}\n\nreturn [{\n  ...$json,\n  intents: detected.length ? detected : [\"unknown\"]\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        400
+      ],
+      "id": "20dbcdc1-ae7a-4d36-a449-6922e163af68",
+      "name": "Detect Intents"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "=expense",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9c7f3b81-ec9b-41cb-97c9-720f1be30c93"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "083c60ec-fd87-4e79-a99d-26c4d8f800d7",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "weather",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d3718fb6-c9d0-4137-991f-c71099167f33",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "forex",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9a0a266a-340e-49ee-a731-84c5684ec6e5",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "calendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a08aa956-8e76-4d55-bf22-27f7c948e779",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "secetary",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        320
+      ],
+      "id": "769430f7-b5fe-4dc1-b89a-5165a4b5ca35",
+      "name": "Routing",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/expenses/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"account_number\": \"\",\n  \"month\": {{ $json.month }},\n  \"year\": {{ $json.year }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2000,
+        352
+      ],
+      "id": "52fa17c2-1d50-4b79-a3e8-e6bbdf2967dc",
+      "name": "Expense Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst base = $input.first().json;\nconst intents = Array.isArray(base.intents) ? base.intents : [];\n\nif (intents.length === 0) {\n  return [\n    {\n      json: {\n        ...base,\n        intent: \"unknown\",\n      },\n    },\n  ];\n}\n\n// Create one item per intent\nreturn intents.map((intent) => ({\n  json: {\n    ...base,\n    intent,\n  },\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        400
+      ],
+      "id": "bfb19beb-2145-4abd-9eca-a678f30ed575",
+      "name": "Explode Intents"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:3b\",\n  \"prompt\": \"You are a date extraction engine.\\n\\nTask:\\nExtract the TARGET month and year from the user message.\\nThe TARGET date is the month and year related to EXPENSES.\\n\\nRules:\\n- Month may be written as a word (January, February, ... December) or a number (1-12).\\n- If multiple dates are mentioned, choose the one that refers to expenses.\\n- If the same month/year appears multiple times, return it once.\\n- Convert month names to numbers (January=1 ... December=12).\\n- Return VALID JSON ONLY.\\n- Do NOT add explanations.\\n- If month or year is missing, return null for that field.\\n\\nUser message:\\n\\\"{{ $json.user_message }}\\\"\\n\\nOutput format:\\n{\\\"month\\\": number|null, \\\"year\\\": number|null}\",\n  \"stream\": false,\n  \"options\": {\n    \"temperature\": 0.0\n  }\n}\n",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1504,
+        288
+      ],
+      "id": "e3ac3319-148d-4baa-9498-08672a7bfb68",
+      "name": "Ollama Request to get date and month"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n//const raw = $json.response;\nconst raw = $input.first().json.response\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (e) {\n  parsed = { month: null, year: null };\n}\n\nreturn {\n  json: {\n    ...$json,\n    month: parsed.month,\n    year: parsed.year,\n  },\n};\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        304
+      ],
+      "id": "4e555454-f8ea-45d1-a5b9-d2ff6cedeed0",
+      "name": "Parse Month Year"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:3b\",\n  \"prompt\": \"You need to extract city/country.\\nReturn VALID JSON ONLY.\\nNo markdown. No explanations.\\nIf city is missing, return null.\\n\\nUser message:\\n {{ $json.user_message }} \\n\\nExpected output format:\\n{\\\"city\\\": \\\"<city_name_or_null>\\\"}\",\n  \"stream\": false,\n  \"options\": {\n    \"temperature\": 0\n  }\n}\n",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1456,
+        480
+      ],
+      "id": "efebf5bb-a504-4ecb-bc52-209b97adc647",
+      "name": "Parse City (Ollama)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n\nconst parsed = typeof $json.response === 'string'\n  ? JSON.parse($json.response)\n  : ($json.response || {});\n\nreturn {\n  json: {\n    ...$json,\n    city: parsed.city || null,\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        480
+      ],
+      "id": "0bc93433-ccb2-4a28-b098-cef09067ed77",
+      "name": "Parse City JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst city = $json.city?.name || null;\nconst first = $json.list?.[0];\n\nreturn {\n  json: {\n    agent: \"weather\",\n    city,\n    forecast_time: first?.dt_txt || null,\n    condition: first?.weather?.[0]?.main || null,\n    description: first?.weather?.[0]?.description || null,\n    temperature_c: first?.main?.temp || null,\n    feels_like_c: first?.main?.feels_like || null,\n    wind_speed: first?.wind?.speed || null,\n    visibility_m: first?.visibility || null\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        528
+      ],
+      "id": "2b9032f5-2652-4622-98e3-c44fe9c0c0ab",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:3b\",\n  \"prompt\": \"You extract currency intent.\\nReturn VALID JSON ONLY.\\nNo markdown.\\n\\nSchema:\\n{\\n  \\\"from_currency\\\": \\\"ISO code or null\\\",\\n  \\\"to_currency\\\": \\\"ISO code or null\\\",\\n  \\\"country\\\": \\\"country name or null\\\"\\n}\\n\\nRules:\\n- If user explicitly mentions currencies, extract them\\n- If not mentioned, leave as null\\n- Extract country if mentioned\\n\\nUser message: {{ $json.user_message }}\",\n  \"stream\": false,\n  \"options\": { \"temperature\": 0.0 }\n}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1440,
+        672
+      ],
+      "id": "f3154fc7-4d82-438d-9d6b-642b20a58f2f",
+      "name": "Parse Forex Pair (Ollama)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Parse LLM response safely (string -> object)\nlet llm = $json.response;\nif (typeof llm === 'string') {\n  try { llm = JSON.parse(llm); } catch (e) { llm = {}; }\n}\nllm = llm || {};\n\n// 2) Defaults\nlet from = (llm.from_currency || \"AED\").toUpperCase();\nlet to = llm.to_currency ? String(llm.to_currency).toUpperCase() : null;\n\n// 3) Infer 'to' from country if missing\nconst country = llm.country ? String(llm.country).trim() : null;\n\nconst countryCurrencyMap = {\n  \"United Kingdom\": \"GBP\",\n  \"UK\": \"GBP\",\n  \"England\": \"GBP\",\n  \"United Arab Emirates\": \"AED\",\n  \"UAE\": \"AED\",\n  \"India\": \"INR\",\n  \"United States\": \"USD\",\n  \"USA\": \"USD\",\n  \"Germany\": \"EUR\",\n  \"France\": \"EUR\",\n  \"Japan\": \"JPY\"\n};\n\nlet inferred_from_country = false;\nif (!to && country && countryCurrencyMap[country]) {\n  to = countryCurrencyMap[country];\n  inferred_from_country = true;\n}\n\n// 4) If still missing, pick a sane default for demo\nif (!to) to = \"USD\";\n\nreturn [{\n  json: {\n    ...$json,\n    from,\n    to,\n    country,\n    inferred_from_country\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        816
+      ],
+      "id": "061c8b1d-e039-4040-aa09-4c77778a4ae9",
+      "name": "Currency Resolution Logic"
+    },
+    {
+      "parameters": {
+        "url": "https://open.er-api.com/v6/latest/AED",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        864
+      ],
+      "id": "c96f264c-9001-4ac3-a994-ae88c8e4219e",
+      "name": "ExchangeRate-API"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get ALL incoming items from Merge By Position\nconst items = $input.all();\n\n// Identify which item has rates and which has currency info\nconst ratesItem = items.find(i => i.json.rates);\nconst currencyItem = items.find(i => i.json.to || i.json.from);\n\n// Safety checks\nconst rates = ratesItem?.json?.rates ?? {};\nconst base = ratesItem?.json?.base_code ?? null;\n\nconst from = (currencyItem?.json?.from ?? base ?? \"\").toUpperCase();\nconst to = (currencyItem?.json?.to ?? \"\").toUpperCase();\n\n// Final rate lookup\nconst rate =\n  to && rates[to] !== undefined\n    ? Number(rates[to])\n    : null;\n\n// Return SINGLE object\nreturn {\n  json: {\n    from,\n    to,\n    rate,\n    base,\n    source: \"exchange-rate-api\"\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        816
+      ],
+      "id": "5a19da19-a421-495f-a276-ce45c0884d88",
+      "name": "Code node after Forex HTTP"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2208,
+        768
+      ],
+      "id": "d905d6b4-8fda-4205-b8ca-ca02033b32cf",
+      "name": "Merge By Position"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2592,
+        432
+      ],
+      "id": "63d548a6-6322-4dd6-8c43-276e7d9bbab3",
+      "name": "Merge By Position2"
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.city }}"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "appid",
+              "value": "="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1952,
+        528
+      ],
+      "id": "a1bdd27c-93f4-45f7-97ac-8a343f5aa527",
+      "name": "Weather Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Case A: merged into single item\nconst merged = items[0]?.json ?? {};\n\n// Weather can be either:\n// 1) its own item in items[] (older flow)\n// 2) embedded inside merged.weather (newer merge)\n// 3) embedded under merged.<something> if you used merge-by-fields\n\nconst weatherFromItems =\n  items.find(i => i.json?.agent === \"weather\")?.json ||\n  items.find(i => i.json?.temperature_c !== undefined && i.json?.city)?.json ||\n  null;\n\nconst weatherFromMerged =\n  merged.weather ||\n  (merged.agent === \"weather\" ? merged : null) ||\n  null;\n\nconst weather = weatherFromMerged || weatherFromItems;\n\n// Expenses\nconst expenseFromItems =\n  items.find(i => i.json?.total_debit !== undefined)?.json || null;\n\nconst expenses =\n  merged.expenses || expenseFromItems || (merged.total_debit !== undefined ? merged : null);\n\n// Forex\nconst forexFromItems =\n  items.find(i => i.json?.rate !== undefined && i.json?.from && i.json?.to)?.json || null;\n\nconst forex =\n  merged.forex || forexFromItems || null;\n\nreturn {\n  json: {\n    expenses,\n    weather,\n    forex,\n  },\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        432
+      ],
+      "id": "c447cf2a-89e6-4783-bc70-b44a5eda3e56",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst expenses = payload.expenses;\nconst weather = payload.weather;\nconst forex = payload.forex;\n\n// ---------- Expense summary ----------\nconst monthNames = [\n  \"January\",\"February\",\"March\",\"April\",\"May\",\"June\",\n  \"July\",\"August\",\"September\",\"October\",\"November\",\"December\"\n];\n\nconst monthName = monthNames[expenses.month - 1];\nconst baseCurrency = forex?.from ?? \"local currency\";\nconst targetCurrency = forex?.to;\nconst rate = forex?.rate;\n\nlet expenseText = `In ${monthName} ${expenses.year}, you had ${expenses.txn_count} transactions with a total spend of ${baseCurrency} ${expenses.total_debit}.`;\n\nif (rate && targetCurrency) {\n  const converted = (expenses.total_debit * rate).toFixed(2);\n  expenseText += ` That is approximately ${targetCurrency} ${converted} at the current exchange rate.`;\n}\n\n// ---------- Weather summary ----------\nlet weatherText = \"\";\nif (weather) {\n  weatherText =\n    `Weather in ${weather.city} around ${weather.forecast_time} was ${weather.description}, ` +\n    `with a temperature of ${weather.temperature_c}°C (feels like ${weather.feels_like_c}°C), ` +\n    `wind speed of ${weather.wind_speed} m/s and visibility up to ${weather.visibility_m} meters.`;\n}\n\n// ---------- Final answer ----------\nconst finalAnswer = [\n  expenseText,\n  weatherText\n].filter(Boolean).join(\"\\n\\n\");\n\nreturn {\n  json: {\n    answer: finalAnswer,\n    structured: payload\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        432
+      ],
+      "id": "a1e7693b-3147-4c9b-b0de-733749851e0d",
+      "name": "Natural Language Answer Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3216,
+        432
+      ],
+      "id": "a291966f-ba02-4791-812f-6978ae85970b",
+      "name": "Respond to Webhook",
+      "alwaysOutputData": false
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Gatekeeper1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gatekeeper1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Detect Intents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Intents": {
+      "main": [
+        [
+          {
+            "node": "Explode Intents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing": {
+      "main": [
+        [
+          {
+            "node": "Ollama Request to get date and month",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse City (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [
+          {
+            "node": "Parse Forex Pair (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expense Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge By Position2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Explode Intents": {
+      "main": [
+        [
+          {
+            "node": "Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Request to get date and month": {
+      "main": [
+        [
+          {
+            "node": "Parse Month Year",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Month Year": {
+      "main": [
+        [
+          {
+            "node": "Expense Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse City (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Parse City JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse City JSON": {
+      "main": [
+        [
+          {
+            "node": "Weather Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Forex Pair (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Currency Resolution Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Currency Resolution Logic": {
+      "main": [
+        [
+          {
+            "node": "ExchangeRate-API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge By Position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExchangeRate-API": {
+      "main": [
+        [
+          {
+            "node": "Merge By Position",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge By Position": {
+      "main": [
+        [
+          {
+            "node": "Code node after Forex HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge By Position2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code node after Forex HTTP": {
+      "main": [
+        [
+          {
+            "node": "Merge By Position2",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge By Position2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Natural Language Answer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Natural Language Answer Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2e40d59f-4abf-491f-97ad-a1fd9d2e61a7",
+  "meta": {
+    "instanceId": "c4e1a5590f667bee9ced4c1b872719c46a19c83e68d0cfb0c29fd9ce236dc567"
+  },
+  "id": "kimcoVNR4RIbBJsO",
+  "tags": []
+}

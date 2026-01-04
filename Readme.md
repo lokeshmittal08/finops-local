@@ -70,19 +70,12 @@ n8n_data/
 ollama/
 
 
-These paths hold secrets, uploads, or local volumes; keep them out of git.
-
 ## Basic API checks
 - Doc extract health: `curl http://localhost:8000/health`
 - Ollama tags: `curl http://localhost:11434/api/tags`
 - n8n webhook (from UI config): POST to `http://host.docker.internal:5678/webhook-test/agent`
 If you want, I can save this into Readme.md directly (once write access is allowed).
 
-yes
-
-
-Finished working
-Sandbox is read-only, so I can’t overwrite Readme.md directly. Paste this entire content into Readme.md (replacing the old lines):
 
 
 # FinOps Local
